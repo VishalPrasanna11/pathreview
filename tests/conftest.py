@@ -1,4 +1,23 @@
-"""Shared test fixtures for PathReview."""
+"""Shared test fixtures for PathReview.
+
+Issue #159 reproduction (structlog vs pytest caplog):
+  Command (from repo root):
+    pytest tests/unit/test_batch_processor.py -k
+    test_empty_chunks_list_returns_empty -q
+  Observed (2026-07-26):
+    - BatchEmbeddingProcessor.process([]) emits
+      "Empty chunks list provided to BatchEmbeddingProcessor" on stdout.
+    - Assertion on caplog fails: caplog.text == "" and caplog.records
+      is empty.
+  Cause:
+    Application code uses structlog.get_logger(); this conftest does not
+    yet configure structlog to propagate into stdlib logging, so
+    pytest's caplog fixture never sees those events.
+  Week 9:
+    Add test logging configuration here (structlog.stdlib /
+    ProcessorFormatter) so caplog-based assertions work suite-wide
+    without changing production configure_logging() in core/logging.py.
+"""
 
 import pytest
 
