@@ -26,3 +26,17 @@ PathReview uses structlog for application logging across modules like `ingestion
 **Setup confirmation:** [x] App runs locally at localhost:5173
 
 **Cohort ledger:** [ ] Issue added to cohort ledger
+
+## Week 8 — Reproduction & solution planning
+
+**Reproduction commit link:** [https://github.com/VishalPrasanna11/pathreview/commit/b1be7950d83f4b1c7953f8d4bba52aacd473914d](https://github.com/VishalPrasanna11/pathreview/commit/b1be7950d83f4b1c7953f8d4bba52aacd473914d)
+
+**Reproduction summary:**
+Ran `pytest tests/unit/test_batch_processor.py::TestBatchEmbeddingProcessor::test_empty_chunks_list_returns_empty -q`. The warning from `BatchEmbeddingProcessor` printed to stdout (`Empty chunks list provided to BatchEmbeddingProcessor`), but the assertion failed because `caplog.text` was empty and `caplog.records` had no entries — structlog is not wired into stdlib logging in tests.
+
+**PLAN.md link:** [https://github.com/VishalPrasanna11/pathreview/blob/fix/159-structlog-caplog-capture/PLAN.md](https://github.com/VishalPrasanna11/pathreview/blob/fix/159-structlog-caplog-capture/PLAN.md)
+
+**Walkthrough video (recommended):**
+
+**Blockers or open questions:**
+Whether `cache_logger_on_first_use=True` in `core/logging.py` requires configuring structlog at `conftest` import time vs an autouse fixture; confirm the exact processor chain so `record.message` / `caplog.text` match the test’s substring checks.
