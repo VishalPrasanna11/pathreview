@@ -42,21 +42,21 @@ Files and modules involved:
 
 ### Plan
 
-1. In `tests/conftest.py`, add a pytest fixture (prefer `autouse=True`, session
+1. ~~In `tests/conftest.py`, add a pytest fixture (prefer `autouse=True`, session
    or function scope) that configures structlog with
    `structlog.stdlib.LoggerFactory` and a processor chain that emits through
    stdlib logging (for example `ProcessorFormatter` /
    `wrap_for_formatter`), without calling or modifying production
-   `configure_logging()` in `core/logging.py`.
-2. Ensure test log levels allow warnings through to `caplog` (set root logger
-   and/or `caplog` level so `logger.warning(...)` is captured; consider INFO if
-   other tests later assert on info events).
-3. Re-run
-   `pytest tests/unit/test_batch_processor.py::TestBatchEmbeddingProcessor::test_empty_chunks_list_returns_empty -q`
-   and confirm it passes with the existing assertion text unchanged.
-4. Run the broader unit suite (`make test-unit` or equivalent) to check for
-   regressions, then remove the temporary Issue #159 reproduction docstring
-   from `tests/conftest.py` once the fixture is in place.
+   `configure_logging()` in `core/logging.py`.~~
+   **Done (Week 9):** Configured at **import time** in `tests/conftest.py` with
+   `LoggerFactory`, `BoundLogger`, `cache_logger_on_first_use=False`, and
+   `ConsoleRenderer`, plus an autouse fixture that keeps caplog/root at INFO.
+2. ~~Ensure test log levels allow warnings through to `caplog`.~~ **Done.**
+3. ~~Re-run `test_empty_chunks_list_returns_empty` and confirm it passes.~~
+   **Done** — passes unchanged.
+4. ~~Run broader unit suite; remove reproduction docstring.~~ **Done** — added
+   `tests/unit/test_structlog_caplog.py`; suite improved (52→51 failed,
+   345→348 passed); remaining failures are pre-existing and unrelated.
 
 ### Inputs & outputs
 
