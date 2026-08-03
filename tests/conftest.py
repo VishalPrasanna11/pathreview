@@ -1,25 +1,57 @@
 """Shared test fixtures for PathReview.
 
-Issue #159 reproduction (structlog vs pytest caplog):
-  Command (from repo root):
-    pytest tests/unit/test_batch_processor.py -k
-    test_empty_chunks_list_returns_empty -q
-  Observed (2026-07-26):
-    - BatchEmbeddingProcessor.process([]) emits
-      "Empty chunks list provided to BatchEmbeddingProcessor" on stdout.
-    - Assertion on caplog fails: caplog.text == "" and caplog.records
-      is empty.
-  Cause:
-    Application code uses structlog.get_logger(); this conftest does not
-    yet configure structlog to propagate into stdlib logging, so
-    pytest's caplog fixture never sees those events.
-  Week 9:
-    Add test logging configuration here (structlog.stdlib /
-    ProcessorFormatter) so caplog-based assertions work suite-wide
-    without changing production configure_logging() in core/logging.py.
+Configures structlog to emit through stdlib logging so pytest's caplog
+fixture can capture application log events (issue #159). Production
+configure_logging() in core/logging.py is intentionally not used here.
 """
 
+from __future__ import annotations
+
+import logging
+
 import pytest
+import structlog
+
+
+def _configure_structlog_for_tests() -> None:
+    """Wire structlog into stdlib logging for the test session.
+
+    Uses LoggerFactory + BoundLogger so events become LogRecords that
+    caplog can capture. cache_logger_on_first_use is False so import-time
+    loggers pick up this configuration.
+    """
+    processors = [
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.dev.ConsoleRenderer(),
+    ]
+    structlog.configure(
+        processors=processors,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=False,
+    )
+    root = logging.getLogger()
+    if not root.handlers:
+        logging.basicConfig(format="%(message)s", level=logging.INFO)
+    root.setLevel(logging.INFO)
+
+
+_configure_structlog_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _ensure_caplog_level(caplog: pytest.LogCaptureFixture) -> None:
+    """Keep root/caplog levels at INFO so warnings are always captured."""
+    caplog.set_level(logging.INFO)
+    logging.getLogger().setLevel(logging.INFO)
 
 
 @pytest.fixture
