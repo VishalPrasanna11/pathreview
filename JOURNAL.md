@@ -73,3 +73,34 @@ Wired structlog into stdlib logging during pytest in `tests/conftest.py` so `cap
 *(Repo-wide `make check` / `make test-unit` still report pre-existing unrelated failures; this change introduces no new failures — suite went from 52 failed / 345 passed to 51 failed / 348 passed. Touched files pass ruff/black; typed packages are unchanged.)*
 
 **Draft PR feedback received from:** none
+
+## Week 10 — Iteration & reflection
+
+### Reviewer feedback
+
+**Feedback received:** [ ] Yes  [x] No — still awaiting review
+
+**Summary of feedback:**
+No maintainer or reviewer comments arrived on [PR #639](https://github.com/ascherj/pathreview/pull/639) for issue #159. Per the Summer 2026 note, reviewer feedback is not a feature this cohort, so documenting that no review came in is expected.
+
+**How you responded:**
+N/A — no feedback received.
+
+---
+
+### Reflection
+
+**What was harder than you expected?**
+The hardest part was debugging the boundary between structlog and pytest's `caplog`, not writing a large code change. When I ran `test_empty_chunks_list_returns_empty`, the warning from `BatchEmbeddingProcessor` clearly printed to stdout (`Empty chunks list provided to BatchEmbeddingProcessor`), so it looked like logging worked — but `caplog.text` was empty and the assertion failed. Figuring out that production `configure_logging()` never runs in unit tests, and that `cache_logger_on_first_use` meant I had to configure structlog at `conftest` import time (not only in a late fixture), took more careful tracing than I expected for a Tier 1 issue.
+
+**What did you learn about working in a large codebase?**
+Contributing to PathReview was different from building my own project because I could not (and should not) learn the whole system. I followed one failure path: `tests/unit/test_batch_processor.py` → `ingestion/embeddings/batch_processor.py` → `core/logging.py` → `tests/conftest.py`, and kept the fix out of production logging on purpose. I also learned to judge success carefully when the full suite still had many unrelated failures — my change improved the count from 52 failed / 345 passed to 51 failed / 348 passed without introducing new failures, which is a more realistic bar than "everything is green."
+
+**How did AI tools help — and where did they fall short?**
+Cursor was most useful for navigating an unfamiliar multi-module repo, drafting `PLAN.md`, and scaffolding the structlog→stdlib bridge in `tests/conftest.py` (`LoggerFactory`, `BoundLogger`, `cache_logger_on_first_use=False`). It fell short on the part only a real test run can answer: whether events actually appear in `caplog.text` with the substring shape existing assertions expect. I still had to reproduce the failure locally, verify the fix with pytest, and decide to leave `core/logging.py` untouched rather than accepting a broader "just fix logging everywhere" suggestion.
+
+**What would you do differently if you started over?**
+I would open the draft PR earlier in Week 9 so peer or mentor feedback could arrive before the final submission, instead of landing the implementation and PR close together. I would also write `tests/unit/test_structlog_caplog.py` first as the acceptance test, then implement the `conftest` wiring against that signal. Finally, I would mark the cohort ledger earlier in Week 7 so process checklist items were not left hanging while I focused on the technical path.
+
+**What are you most proud of from this module?**
+I am most proud that the fix stayed scoped to test infrastructure: existing assertions in `test_batch_processor.py` passed unchanged once `conftest` bridged structlog into stdlib logging, and production behavior was left alone. Beyond the PR itself, I am proud of the four-week record — choosing issue #159, reproducing it, writing `PLAN.md`, implementing the fix, and documenting the full cycle in this journal — because that process is what made the contribution reviewable and intentional.
